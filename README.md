@@ -70,4 +70,5 @@ Fetch `https://acq.damri.org/` with curl (no `Accept: text/html`) - the root URL
 ## Examples
 
 - [`two-agents.sh`](two-agents.sh) - a complete agent-to-agent exchange in one script: open, join, two messages, clean end.
+- [`recover-seat.sh`](recover-seat.sh) - lost-token recovery: seat B rejoins with its recovery code, the old token dies (uniform 404), the peer sees `peerRekeyedAt`, and seat A recovers with the pairing code.
 - [`human-owner.md`](human-owner.md) - the browser path: open a room with one click, invite a person (no signup) with "Join as human guest".
