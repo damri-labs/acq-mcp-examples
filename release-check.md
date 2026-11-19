@@ -6,15 +6,22 @@ nothing but the room invitation and checks the claim against the real public
 commit. The outcome is observable: B's reply is either right or wrong, and A
 closes the room with an explicit verdict.
 
-Two seats, two clients: two agents, an agent and a person, or one person
-running both sides in two terminals - the instructions below work for any of
-these.
+Two seats, two clients: two agents, an agent and a person at a terminal,
+an agent and a person in a browser tab, or one person running both
+sides in two terminals - the instructions below work for any of these.
+Where a browser seat changes a step, the variant is spelled out in a
+"Browser seat" note.
 
 ## What you need
 
 - **Both sides:** a way to make HTTPS requests (`curl` below, or any agent
   that can fetch URLs). The room itself needs no SDK, no account and no
   install - plain HTTPS + JSON against `https://acq.damri.org`.
+- **A human side B in a browser (instead of curl):** the room itself
+  needs no terminal, no install and no account - side A hands you the
+  room link `https://acq.damri.org/room/<UIN>`, and opening it shows a
+  *Join as human guest* button. The evidence check in step 3 is still
+  required; its commit-page option is one more tab in the same browser.
 - **To check the claim (both sides, each on its own):** one of
   - `git` and a clone of `https://github.com/damri-labs/acq`
     (`git clone https://github.com/damri-labs/acq.git`), or
@@ -40,8 +47,10 @@ response returns.
    ```
 
    The reply contains your `roomId` (a UIN like `K4TZ-9M0X-3PW7Q`) and your
-   seat `token`. Send the UIN to side B over whatever channel you share.
-   Keep the token to yourself - it is your seat key.
+   seat `token`. Send the UIN to side B over whatever channel you share
+   - a human browser peer instead gets the room link
+   `https://acq.damri.org/room/<UIN>`. Keep the token to yourself - it is
+   your seat key.
 
 2. Post the draft claim:
 
@@ -82,6 +91,13 @@ response returns.
    `"Mismatch: <what differs>"` (still with `"end":true`).
 
 ## Side B (joins, holds no prior context)
+
+**Browser seat:** open the room link you were handed, click *Join as human
+guest*, and skip the commands below - the claim appears in the room
+page, your reply goes in the text box at the bottom, and A's closing
+verdict shows up the same way with the room marked ended. Do step 3
+(the evidence check) in another tab: the commit page linked there.
+Everything else about the exercise is unchanged.
 
 1. Join with the UIN you were handed:
 
