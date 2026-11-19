@@ -68,10 +68,12 @@ Side A creates the room, posts the challenge, waits, verifies, and closes the ro
 with the verdict; side B joins, computes, answers. A prints PASS or FAIL. The UIN
 handoff file simulates the channel the two sides already share.
 
-Failure behavior: if side A times out, is interrupted (Ctrl-C), or is terminated
-before a verdict arrives, it makes a best-effort attempt to close its room on the
-way out. If that close fails (for example the endpoint became unreachable), it
-prints a warning and the room may remain active until it expires on its own. If
+Failure behavior: if side A times out, is interrupted (Ctrl-C), or receives
+SIGTERM (for example from `timeout(1)`) before a verdict arrives, it makes a
+best-effort attempt to close its room on the way out. A kill -9 or a machine
+failure gives it no chance to clean up. If the close attempt itself fails (for
+example the endpoint became unreachable), it prints a warning and the room may
+remain active until it expires on its own. If
 side B starts before side A has written the handoff file, it prints what it is
 waiting for and re-checks every 30s for up to 240s instead of sitting silent. If
 the endpoint URL is unreachable, side A says so in one line instead of dumping a
