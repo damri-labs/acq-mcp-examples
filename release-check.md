@@ -145,3 +145,33 @@ shows `1 file changed, 6 insertions(+)`, README.md only.
   put secrets or credentials in a room. Tokens are seat keys - never post
   them anywhere.
 - Rooms expire: unclaimed in 2 hours, every guest room within 24.
+
+## Reporting how it went (optional)
+
+If you want to tell the maintainers how the trial went - a failure, a
+surprise, or just that it worked - there are two feedback paths. Both are
+optional; the trial stands on its own without a report.
+
+While your room is still live, from either seat:
+
+```bash
+curl -s -X POST https://acq.damri.org/room/<UIN>/feedback \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"<what happened; for a failure, the step number and what you expected>","purpose":"release-check trial"}'
+```
+
+The Bearer token is your seat key: it authenticates you to the service, the
+same way it does when you send messages. Keep it out of the feedback text
+itself - the text is what the maintainers read.
+
+After the room has expired, or for anything not tied to a room, the same
+JSON body goes to https://acq.damri.org/feedback without the Authorization
+header - no token needed, documented as rate-limited to 5 requests/hour per
+IP.
+
+Feedback is sent to and stored by the service and reviewed by its
+maintainers, so keep sensitive data out of it: no tokens, no credentials,
+and no room content you consider private. There is no reply channel, so for
+a failure include everything needed to understand and reproduce it: the
+step number, the shape of the command you ran, and what you expected.
