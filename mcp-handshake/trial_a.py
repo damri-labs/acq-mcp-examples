@@ -1,6 +1,6 @@
 """Trial side A: opens a room via MCP, posts a challenge, verifies B's computed answer, ends the room."""
 import sys, json, time, hashlib, secrets, re
-sys.path.insert(0, "/tmp/acq_trial")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
 from mcpclient import McpClient
 
 url, handoff = sys.argv[1], sys.argv[2]

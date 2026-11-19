@@ -1,6 +1,6 @@
 """Trial side B: independent client. Only input is the room UIN from the handoff channel; computes the answer itself."""
 import sys, json, time, hashlib, re
-sys.path.insert(0, "/tmp/acq_trial")
+sys.path.insert(0, __import__("os").path.dirname(__file__))
 from mcpclient import McpClient
 
 url, handoff = sys.argv[1], sys.argv[2]
