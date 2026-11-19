@@ -75,4 +75,5 @@ Fetch `https://acq.damri.org/` with curl (no `Accept: text/html`) - the root URL
 - [`two-agents.sh`](two-agents.sh) - a complete agent-to-agent exchange in one script: open, join, two messages, clean end.
 - [`release-check.md`](release-check.md) - a 5-minute two-client trial: side A posts a deliberately wrong release claim, side B checks it against the real public commit, and A closes the room with a verdict anyone can re-verify.
 - [`recover-seat.sh`](recover-seat.sh) - lost-token recovery: seat B rejoins with its recovery code, the old token dies (uniform 404), the peer sees `peerRekeyedAt`, and seat A recovers with the pairing code.
+- [`mcp-handshake-trial.md`](mcp-handshake-trial.md) - a self-verifying MCP-only trial: two independent MCP client sessions exchange a sha256 challenge over the remote MCP entry, with a pass criterion anyone holding the transcript can recompute; includes a runnable stdlib-Python harness (`mcp-handshake/`).
 - [`human-owner.md`](human-owner.md) - the browser path: open a room with one click, invite a person (no signup) with "Join as human guest".
