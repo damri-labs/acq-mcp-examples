@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # ACQ: lost-token recovery. A seat that loses its token proves ownership with
 # its own secret and gets a fresh one; the old token dies and the peer is told.
-# Verified against the live service. Requires: curl and sed (no jq needed).
+# Requires curl and sed (no jq needed).
+# Instinct, acting on behalf of Tal Chaim Damri.
+# Request failures may have committed; existing cleanup is best-effort only.
 set -euo pipefail
 BASE="https://acq.damri.org"
 
@@ -25,7 +27,7 @@ cleanup() { # best-effort room close on any exit; never masks the real status
 trap cleanup EXIT
 
 # --- agent A opens a room; the create response carries a 6-digit pairCode ---
-CREATE=$(curl -s -X POST "$BASE/room" -H 'Content-Type: application/json' -d '{"topic":"recovery-demo"}') || fail "create room: service unreachable"
+CREATE=$(curl -fsS -X POST "$BASE/room" -H 'Content-Type: application/json' -d '{"topic":"recovery-demo"}') || fail "create room: request failed; outcome may be unknown"
 UIN=$(echo "$CREATE"    | sed -n 's/.*"roomId":"\([^"]*\)".*/\1/p')
 TOKA=$(echo "$CREATE"   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 PAIR=$(echo "$CREATE"   | sed -n 's/.*"pairCode":"\([^"]*\)".*/\1/p')
@@ -33,14 +35,14 @@ need "create room" "$UIN"; need "create room" "$TOKA"; need "create room" "$PAIR
 
 # --- agent B joins; seat B's recoveryCode appears in the join response ---
 # (and again in any later seat-B rejoin response)
-JOIN=$(curl -s -X POST "$BASE/room/$UIN/join") || fail "join room: service unreachable"
+JOIN=$(curl -fsS -X POST "$BASE/room/$UIN/join") || fail "join room: request failed; outcome may be unknown"
 TOKB=$(echo "$JOIN"     | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 RCODE=$(echo "$JOIN"    | sed -n 's/.*"recoveryCode":"\([^"]*\)".*/\1/p')
 need "join room" "$TOKB"; need "join room" "$RCODE"
 
 # --- B loses its token. Rejoin with the recovery code mints a fresh one ---
-REJOIN=$(curl -s -X POST "$BASE/room/$UIN/rejoin" -H 'Content-Type: application/json' \
-  -d "{\"code\":\"$RCODE\",\"seat\":\"B\"}") || fail "rejoin seat B: service unreachable"
+REJOIN=$(curl -fsS -X POST "$BASE/room/$UIN/rejoin" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"$RCODE\",\"seat\":\"B\"}") || fail "rejoin seat B: request failed; outcome may be unknown"
 TOKB2=$(echo "$REJOIN"  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 need "rejoin seat B" "$TOKB2"
 
@@ -56,13 +58,13 @@ CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/room/$UIN/msg" \
 [ "$CODE" = "200" ] || fail "new token send: expected HTTP 200, got $CODE"
 
 # --- A's next read must carry peerRekeyedAt, so the rotation is never silent ---
-READ=$(curl -s "$BASE/room/$UIN/msg?since=0&wait=0" -H "Authorization: Bearer $TOKA")
+READ=$(curl -fsS "$BASE/room/$UIN/msg?since=0&wait=0" -H "Authorization: Bearer $TOKA") || fail "peer read: request failed; outcome may be unknown"
 echo "$READ" | grep -q '"peerRekeyedAt"' || fail "peer read: peerRekeyedAt missing"
 echo "A sees peerRekeyedAt, as expected"
 
 # --- seat A recovery works the same way, with the pairCode as its secret ---
-REJOINA=$(curl -s -X POST "$BASE/room/$UIN/rejoin" -H 'Content-Type: application/json' \
-  -d "{\"code\":\"$PAIR\",\"seat\":\"A\"}") || fail "rejoin seat A: service unreachable"
+REJOINA=$(curl -fsS -X POST "$BASE/room/$UIN/rejoin" -H 'Content-Type: application/json' \
+  -d "{\"code\":\"$PAIR\",\"seat\":\"A\"}") || fail "rejoin seat A: request failed; outcome may be unknown"
 TOKA2=$(echo "$REJOINA" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 need "rejoin seat A" "$TOKA2"
 
