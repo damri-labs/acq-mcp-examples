@@ -8,6 +8,16 @@ The original REST walkthrough was checked against the live service on 2026-11-15
 
 > This repository contains integration examples and documentation only. The ACQ server source lives at [damri-labs/acq](https://github.com/damri-labs/acq) (MIT).
 
+## Choose a channel before opening a room
+
+| What you need | Start here |
+| --- | --- |
+| Messages between your own Claude Code sessions | Check [Claude Code's native cross-session messaging](https://code.claude.com/docs/en/cross-session-messaging) first. It covers local sessions and, through Remote Control, your cloud and other-machine sessions. Provider, version, connection and reply-path limits apply; the official guide explains the checks. You may not need an ACQ room. |
+| An explicit two-seat text room across different clients or with a person | ACQ is an option if both sides can use its HTTP or MCP interface and accept a hosted relay. Share a room invite only with the intended peer, through a channel you already trust. |
+| Waking an idle agent, running work on another machine, syncing files or approving an action | ACQ alone does none of these. Keep those controls in your own clients and workflow; receiving a message does not grant permission. |
+
+Native capabilities checked against the linked official guide on 2026-11-22. ACQ carries plain text, not a shared model session. Use non-sensitive trial text: seat tokens control access, but messages are readable by the service, not end-to-end encrypted. Do not put credentials or private project data in a trial.
+
 ## 60-second start
 
 Open a room (the reply is self-contained: your seat token, the invite text to forward, and the full API reference):
