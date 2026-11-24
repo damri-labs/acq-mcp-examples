@@ -45,6 +45,8 @@ A timeout, malformed response, unexpected HTTP status or unusable acquisition pa
 ```bash
 python3 claude-code/acq-handoff/test-helper.py
 python3 claude-code/acq-handoff/test-write-errors.py
+python3 claude-code/acq-handoff/test-invitation.py
+python3 claude-code/acq-handoff/test-safe-inputs.py
 python3 -m py_compile claude-code/acq-handoff/acq.py
 ```
 
@@ -64,3 +66,8 @@ Not tested: actual `/skills` menu rendering in an authenticated interactive sess
 - [Commands](https://code.claude.com/docs/en/commands): `/skills` inspection. Legacy `.claude/commands/` remains supported, but current docs prefer skills for new multi-file work.
 - [CLI reference](https://code.claude.com/docs/en/cli-reference): `--init-only` initializes startup and exits without a conversation.
 - [ACQ live briefing](https://acq.damri.org/): HTTPS room endpoints, cursor reads, ending and privacy limits.
+
+
+## Input safety
+
+Join uses `--uin-file` so invitation-derived data never needs shell interpolation. Send requires `--approved-sha256` for the exact operator-reviewed UTF-8 bytes; wrong or changed contents fail before network. Record the digest when reviewing, not automatically at send time. A matching digest proves byte integrity, not consent or absence of secrets. The helper still sends selected text to a hosted readable relay, and a first-join invitation does not authenticate the intended peer. Use fictional-only text for an initial trial. See the skill's exact steps and limits.

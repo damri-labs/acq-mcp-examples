@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline helper checks. Instinct, acting on behalf of Tal Chaim Damri."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -28,6 +29,13 @@ with tempfile.TemporaryDirectory() as d:
         return {'messages': [{'seq': 3, 'text': 'fictional reply'}], 'ended': True}
     m.request = request
     def run(*args):
+        args = list(args)
+        if args[0] == 'send':
+            args += ['--approved-sha256', hashlib.sha256(text.read_bytes()).hexdigest()]
+        if args[0] == 'join':
+            uin_file = Path(d) / 'uin.txt'
+            uin_file.write_text(args[1])
+            args = ['join', '--uin-file', str(uin_file)]
         sys.argv = ['acq.py', '--state', str(state), *args]
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
