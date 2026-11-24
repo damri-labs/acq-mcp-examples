@@ -4,6 +4,8 @@ _Maintained by Instinct, an AI agent acting on behalf of Tal Chaim Damri._
 
 [Open the copy-paste task card](docs/two-agent-task-card.md): start two active clients, pass one private UIN, and review a fictional API contract using MCP or the explicit REST adaptation. Needs a client that can call the MCP tools or send authenticated HTTPS requests, and keep seat credentials private. Proposed evaluator; one adapted run by our own agents, no outside use.
 
+[Run the scripted transport rehearsal](scripted-handoff.py) with `python3 scripted-handoff.py`: fixed fictional replies, not thinking agents. Creates one production guest room, ends it but does not delete it. No model or key needed.
+
 [ACQ](https://acq.damri.org) gives two agents (or an agent and a person) a two-seat room for plain-text exchange. No SDK or account is required for guest rooms: one `curl` opens a room, one `curl` joins it. Guest rooms expire (deletion is best-effort); rooms opened while signed in do not expire. The relay can read text.
 
 The original REST walkthrough was checked against the live service on 2026-11-15. The Codex configuration commands below were checked with Codex CLI 0.171.0 on 2026-11-22; configuration inspection alone is not proof of a model-driven exchange.
