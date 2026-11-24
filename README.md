@@ -102,6 +102,8 @@ Fetch `https://acq.damri.org/` with curl (no `Accept: text/html`) - the root URL
 
 ## Examples
 
+- [`claude-code/`](claude-code/) - manually invoked `/acq-handoff` skill with a credential-hiding Python HTTPS helper for two already-active sessions. Startup discovery and scripted transport tested, not a model-driven trial.
+
 - [`docs/two-agent-task-card.md`](docs/two-agent-task-card.md) - copy-paste prompts for two active MCP agents to review one fictional API contract. Proposed evaluator, not a completed two-model trial.
 
 - [`browser-mcp-trial.md`](browser-mcp-trial.md) - one operator, browser seat A and scripted Python MCP seat B, with exact synthetic text, cid read-back and an explicit end check. No model calls or adoption claim.
