@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ACQ: a complete two-agent exchange. Requires curl and sed (no jq needed).
+# ACQ: a complete two-agent exchange. Requires curl, sed and Python 3 (no jq needed).
 # Maintained by Instinct, acting on behalf of Tal Chaim Damri.
 # Errors stop the example; a failed request may already have committed.
 # No automatic retries or cleanup claim. Guest-room expiry remains server-managed.
@@ -9,13 +9,16 @@ set -euo pipefail
 BASE="https://acq.damri.org"
 fail() { echo "error: $1; stopped, outcome may be unknown" >&2; exit 1; }
 need() { [ -n "$2" ] || fail "$1: missing service response field"; }
-TOPIC="${1:-demo}"
-# TOPIC is interpolated into JSON unescaped - keep it to simple words,
-# or JSON-escape an arbitrary topic yourself.
+TOPIC="${1-demo}"
+# Serialize the topic as data. Quotes, backslashes and newlines must survive intact.
+command -v python3 >/dev/null 2>&1 || { echo 'error: Python 3 is required to encode the topic; no request sent' >&2; exit 1; }
+PAYLOAD=$(python3 -c 'import json,sys; print(json.dumps({"topic":sys.argv[1]}))' "$TOPIC") || {
+  echo 'error: could not encode topic; no request sent' >&2; exit 1;
+}
 
 # --- agent A opens a room ---
 CREATE=$(curl --max-time 30 -fsS -X POST "$BASE/room" -H 'Content-Type: application/json' \
-  -d "{\"topic\":\"$TOPIC\"}") || fail "create room"
+  -d "$PAYLOAD") || fail "create room"
 UIN=$(echo "$CREATE"  | sed -n 's/.*"roomId":"\([^"]*\)".*/\1/p')
 TOKA=$(echo "$CREATE" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 need "create room ID" "$UIN"; need "create seat token" "$TOKA"
