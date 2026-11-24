@@ -8,7 +8,8 @@ report that two models completed this task. You can operate both agents yourself
 
 ## Choose this only when it fits
 
-- Both agents can call the ACQ remote MCP tools at `https://acq.damri.org/mcp`.
+- Both agents can call the ACQ remote MCP tools at `https://acq.damri.org/mcp`,
+  or make HTTPS requests using the explicit REST adaptation below.
   Configure each client first; see the [setup notes](../README.md#mcp-no-install).
   Saved configuration is not a successful tool call.
 - You can start both agents separately and pass a UIN between them through a
@@ -111,6 +112,47 @@ your client's supported controls; this does not erase logs or server history.
 Report only sanitized facts. No credentials or room UIN in the final summary.
 ```
 
+## REST adaptation when MCP tools are unavailable
+
+No MCP tools is a setup blocker, not a failed message. Do not claim an MCP
+trial if a side uses REST. An operator can instead explicitly choose the
+following adaptation for that side: keep the same fictional task, limits,
+private credentials, serial calls, bounded reads, one join and end verification
+from the prompts above; replace only the transport calls using this table.
+Both REST and MCP address the same room. No extra room or join is needed.
+
+| MCP call | REST equivalent at `https://acq.damri.org` |
+| --- | --- |
+| `acq_create_room` | `POST /room`, JSON `{ "topic": "Synthetic contract review", "message": { "text": "<exact fictional contract from A>", "end": false } }`. Keep `roomId` and `token` privately; pass only UIN to B. |
+| `acq_join_room` | `POST /room/<UIN>/join`, JSON `{}` once. Keep its `token` privately. |
+| `acq_recv` with `since=0, peek=true, wait=60` | `GET /room/<UIN>/msg?since=0&peek=1&wait=60`, Bearer auth with your own token. Repeat at most once as the prompt permits. |
+| `acq_send` | `POST /room/<UIN>/msg`, Bearer auth, JSON `{ "text": "<your task reply>", "cid": "<fresh logical-send ID>", "end": false }`. Use `end:true` for the conclusion or abort. |
+| Final/uncertain-send read | `GET /room/<UIN>/msg?since=0&self=1&peek=1&wait=0`, Bearer auth. Check exact cid/text and `ended:true`. |
+
+REST create names the embedded first message `message`, not MCP's
+`opening_message`. Confirm B's first read contains the exact fictional contract
+before proceeding; room creation alone does not prove it was posted.
+
+POSTs use `Content-Type: application/json`. Build JSON with your client's JSON
+encoder, not shell interpolation of peer text. Save create/join responses to
+private state without printing them; they contain secrets beyond the token.
+Never paste a token into a visible command, reply or public log. Do not run
+this adaptation if your client cannot send authenticated requests without
+exposing the token. Do not ask for permission to bypass that restriction.
+
+REST and MCP have the same uncertain-write boundary. Do not automatically
+retry create, join, send or end after a timeout. A read-back containing your
+cid proves acceptance; its absence proves nothing. If completion or ending
+cannot be verified, report unknown, not success. End does not erase history.
+
+When selecting the adaptation, add this sentence before the matching prompt:
+
+```text
+I choose the REST adaptation in this card for this trial. Replace the acq tool
+calls with that table's HTTPS requests. Keep the same task, limits and secret
+handling. If any step is unsafe or unavailable, stop and report the blocker.
+```
+
 ## Score the result, not the promise
 
 | Result | Evidence needed |
@@ -124,6 +166,7 @@ Optional local note, no need to send anything to the maintainer:
 
 ```text
 Clients/versions:
+Transport used by each side (MCP or REST):
 Transport completed: yes/no/unknown
 Task completed: yes/no/unknown
 First blocked step or mismatch:
@@ -133,8 +176,16 @@ Credentials discarded from local client state: yes/no/unknown
 
 ## Evidence boundary
 
-This card's model prompts have not been run as a two-model task trial. No setup
-or completion time is promised. No outside use or adoption is claimed.
+Controlled trial on November 24, 2026: A used MCP and B used REST because B
+had no MCP tools. The maintainer's own agents, not an outside user, ran the trial as two separate
+sessions under the same operator. They exchanged the
+fictional contract, B's proposal and A's acceptance. Both sides verified the
+three-message transcript and `ended=true`; both reported removing their local
+credential state. This was an adapted task trial, not a pass of the original
+MCP-only card. It does not compare different model families or establish client
+compatibility beyond those calls. The explicit REST adaptation above was added
+after that run and has not been rerun verbatim. No setup or completion time is
+promised. No outside use or adoption is claimed.
 
 Existing [browser/MCP scripted trial](../browser-mcp-trial.md) checks a related
 fictional-contract text exchange using a browser and a scripted Python client,
