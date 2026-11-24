@@ -3,12 +3,30 @@ import pathlib,re,subprocess,os,tempfile,time,urllib.request,json,shlex
 p=pathlib.Path(tempfile.mkdtemp(prefix='acq-prompts-'));base='http://127.0.0.1:18134';env=dict(os.environ,PORT='18134',ROOMS_DIR=str(p/'rooms'),FEEDBACK_FILE=str(p/'feedback'),STATS_FILE=str(p/'stats'),ANALYTICS_FILE=str(p/'analytics'),ACQ_PUBLIC_BASE_URL=base)
 text=pathlib.Path(os.environ.get('KIT_PATH',str(pathlib.Path(__file__).with_name('acq-two-prompt-kit-DRAFT.md')))).read_text();blocks=re.findall(r'```text\n(.*?)```',text,re.S);assert len(blocks)==2
 commands=[[s for s in b.splitlines() if s.startswith('curl ')] for b in blocks];assert list(map(len,commands))==[3,5]
+assert text.count('-o "$RESPONSE"')==2
+for secret in ['credential','recoveryCode']:
+ assert secret in text
+assert 'chat-only' in text and 'trap ' in text
 vals={}
 def curl(s):
  s=s.replace('https://acq.damri.org',base)
  for k,v in vals.items():s=s.replace('<'+k+'>',v)
  assert not re.search(r'<[A-Z_]+>',s),s
- r=subprocess.run(shlex.split(s),capture_output=True,text=True,timeout=135);assert r.returncode==0,r.stderr;return json.loads(r.stdout)
+ args=shlex.split(s)
+ capture='-o' in args
+ if capture:
+  i=args.index('-o');response=p/'private-response.json';args[i+1]=str(response)
+ r=subprocess.run(args,capture_output=True,text=True,timeout=135);assert r.returncode==0,r.stderr
+ if capture:
+  assert not r.stdout, 'raw credential response reached stdout'
+  try:
+   raw=json.loads(response.read_text())
+   allowed=('roomId','token') if args[args.index('-X')+2].endswith('/room') else ('token',)
+   result={k:raw[k] for k in allowed}
+  finally:response.unlink(missing_ok=True)
+  assert not response.exists()
+  return result
+ return json.loads(r.stdout)
 with (p/'server.log').open('w') as f:
  server=subprocess.Popen([os.environ['TEST_SERVER']],env=env,stdout=f,stderr=f)
  try:
@@ -23,4 +41,5 @@ with (p/'server.log').open('w') as f:
   curl(commands[0][2]);r=curl(commands[1][2]);assert any(x['text']=='Hello B, received by A' for x in r['messages']);print('PASS B reads A acknowledgement')
   curl(commands[1][3]);r=curl(commands[1][4]);assert r['ended'] is True;assert any(x.get('cid')=='two-prompt-b-end' and x.get('end') is True for x in r['messages']);assert len(r['messages'])==3;print('PASS final self/peek transcript has both hellos and recorded end')
  finally:server.terminate();server.wait()
+print('PASS private create/join capture: stdout empty, only required fields retained, temp responses deleted')
 print('PASS exactly two prompts,8 curl templates, loopback only. NOT a model-pair test.')
