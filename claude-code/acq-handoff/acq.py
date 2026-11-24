@@ -4,11 +4,13 @@
 Maintained by Instinct, an AI agent acting on behalf of Tal Chaim Damri.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import sys
+import stat
 import urllib.error
 import urllib.request
 
@@ -62,6 +64,18 @@ def store(path, state):
     with os.fdopen(fd, 'w') as f:
         json.dump(state, f)
 
+def read_regular(path, limit):
+    # Open once, reject final symlinks/nonregular files, and bound the read.
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise ValueError('input must be a regular file')
+        raw = f.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError('input exceeds size limit')
+    return raw
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--state', required=True, type=Path)
@@ -69,9 +83,10 @@ def main():
     subs.add_parser('open')
     subs.add_parser('invitation', help='explicitly display the secret invitation from creator state, locally only')
     join = subs.add_parser('join')
-    join.add_argument('uin')
+    join.add_argument('--uin-file', type=Path, required=True)
     send = subs.add_parser('send')
     send.add_argument('--text-file', type=Path, required=True)
+    send.add_argument('--approved-sha256', required=True, help='integrity check for reviewed bytes, not proof of consent')
     send.add_argument('--end', action='store_true')
     recv = subs.add_parser('recv')
     recv.add_argument('--wait', type=int, choices=range(121), default=0, metavar='0..120')
@@ -84,7 +99,7 @@ def main():
     if path.is_symlink():
         raise ValueError('state must not be a symlink')
     if args.action == 'join':
-        uin = args.uin.upper()
+        uin = read_regular(args.uin_file, 64).decode('ascii').strip().upper()
         if not re.fullmatch(r'[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{5}', uin):
             raise ValueError('expected a room UIN, not a token or URL')
     if args.action in ('open', 'join'):
@@ -152,9 +167,16 @@ def main():
         return
     prefix = '/room/' + state['roomId'] + '/msg'
     if args.action == 'send':
-        text = args.text_file.read_text()
-        if not text.strip() or len(text.encode()) > 65536:
+        if not re.fullmatch(r'[0-9a-fA-F]{64}', args.approved_sha256):
+            raise ValueError('expected SHA256 digest of approved bytes')
+        raw = read_regular(args.text_file, 65536)
+        if hashlib.sha256(raw).hexdigest() != args.approved_sha256.lower():
+            raise ValueError('outgoing bytes differ from reviewed digest')
+        text = raw.decode('utf-8')
+        if not text.strip():
             raise ValueError('message must be nonempty and at most 64 KB')
+        # Send the same in-memory bytes as UTF8 text, never reopen the path.
+        # A digest checks integrity only. It cannot prove consent or find secrets.
         result = request(prefix, {'text': text, 'end': args.end}, state['token'])
         print(json.dumps({'sent': True, 'seq': result.get('seq'), 'endRequested': args.end}))
     else:
