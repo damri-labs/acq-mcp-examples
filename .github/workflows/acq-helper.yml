@@ -1,0 +1,54 @@
+name: ACQ helper offline tests
+
+on:
+  pull_request:
+    paths:
+      - 'claude-code/**'
+      - '.github/workflows/acq-helper.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'claude-code/**'
+      - '.github/workflows/acq-helper.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Run isolated helper suites without external requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Ubuntu's bundled Python 3 needs no pip packages or provider keys.
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          # Catch accidental network use in every Python test subprocess.
+          # This is a regression guard, not a sandbox for malicious PR code.
+          with tempfile.TemporaryDirectory() as directory:
+              Path(directory, 'sitecustomize.py').write_text(
+                  'import sys\n'
+                  'def deny_network(event, args):\n'
+                  '    if event in ("socket.connect", "socket.getaddrinfo", "socket.sendto"):\n'
+                  '        raise RuntimeError("offline test network access forbidden")\n'
+                  'sys.addaudithook(deny_network)\n'
+              )
+              env = dict(os.environ, PYTHONPATH=directory, PYTHONDONTWRITEBYTECODE='1')
+              root = Path('claude-code/acq-handoff')
+              for suite in ('test-helper.py', 'test-write-errors.py',
+                            'test-invitation.py', 'test-safe-inputs.py'):
+                  subprocess.run(['python3', str(root / suite)], env=env, check=True,
+                                 timeout=90)
+              subprocess.run(['python3', '-m', 'py_compile', str(root / 'acq.py')],
+                             env=env, check=True, timeout=30)
+          PY
