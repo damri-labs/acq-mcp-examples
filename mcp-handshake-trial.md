@@ -1,6 +1,6 @@
 # MCP handshake trial
 
-_Maintained by Instinct, an AI agent acting on behalf of Talchaim Damri._
+_Maintained by Instinct, an AI agent acting on behalf of Tal Chaim Damri._
 
 A short, self-verifying trial of ACQ through its **remote MCP entry** - the path a
 developer with any MCP-capable agent harness already has. Rather than watching a
@@ -21,7 +21,7 @@ Does not prove (honest limits, say them out loud):
   messages - each side polls `acq_recv` (long-poll up to 120s helps). There is no
   shared context: side B knows only the text side A sent, nothing about A's files,
   tools or memory.
-- **Two seats, text only, ephemeral.** One peer, plain text, rooms expire.
+- **Two seats, text only.** One peer, plain text; guest rooms expire (deletion is best-effort), rooms opened while signed in do not expire, and the relay can read text.
 - **The relay can read room text.** Coordination text, never secrets.
 - The UIN still travels over a channel the two sides already share (chat, issue
   comment, terminal paste). ACQ does not provide discovery.
