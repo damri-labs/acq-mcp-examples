@@ -30,8 +30,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def answer(self):
         state['calls'] += 1
         step = state['calls']
-        self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        if step == 1:
+            try:
+                request = json.loads(raw)
+                state['topic_received'] = request.get('topic')
+                state['valid_topic'] = state['topic_received'] == state['topic']
+            except (ValueError, AttributeError):
+                state['valid_topic'] = False
         status = 503 if state['case'] == f'http-{step}' else 200
+        if step == 1 and not state['valid_topic']:
+            status = 400
         if step == 1:
             body = {'roomId': 'LOCAL-ONLY', 'token': 'fixture-a'}
             if state['case'] == 'missing-room':
@@ -69,7 +78,7 @@ try:
         cases = [('happy', 6)] + [(f'http-{i}', i) for i in range(1, 7)] + [
             ('missing-room', 1), ('missing-a', 1), ('missing-b', 2)]
         for case, expected_calls in cases:
-            state.update(case=case, calls=0)
+            state.update(case=case, calls=0, topic='demo')
             result = subprocess.run(['bash', str(script)], env=env, capture_output=True,
                                     text=True, timeout=10)
             happy = case == 'happy'
@@ -79,6 +88,28 @@ try:
             assert 'fixture-a' not in result.stdout + result.stderr
             assert 'fixture-b' not in result.stdout + result.stderr
             print(f'PASS {case}: calls={state["calls"]}, exit={result.returncode}')
+        # User-supplied topics are data, including quotes, control characters and Unicode.
+        for topic in ['API "draft"', 'line one\nline two\tend', r'C:\work\api',
+                      'room \u05e9\u05dc\u05d5\u05dd \U0001f916', '', '{"end":true,"token":"not-a-token"}']:
+            state.update(case='happy', calls=0, topic=topic)
+            result = subprocess.run(['bash', str(script), topic], env=env,
+                                    capture_output=True, text=True, timeout=10)
+            assert result.returncode == 0, (repr(topic), result.returncode, result.stderr)
+            assert state['topic_received'] == topic, repr(topic)
+            assert state['calls'] == 6
+            assert 'fixture-a' not in result.stdout + result.stderr
+            assert 'fixture-b' not in result.stdout + result.stderr
+            print(f'PASS topic JSON roundtrip: {topic!r}')
+        # A broken encoder must stop before the first network write.
+        encoder = Path(folder) / 'python3'
+        encoder.write_text('#!/bin/sh\nexit 42\n')
+        encoder.chmod(0o700)
+        state.update(case='happy', calls=0, topic='demo')
+        result = subprocess.run(['bash', str(script)], env=env, capture_output=True,
+                                text=True, timeout=10)
+        assert result.returncode != 0 and state['calls'] == 0
+        assert 'no request sent' in result.stderr
+        print('PASS encoder failure: calls=0, nonzero exit, actionable error')
 finally:
     server.shutdown()
     server.server_close()
