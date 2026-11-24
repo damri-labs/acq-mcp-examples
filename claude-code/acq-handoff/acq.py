@@ -67,6 +67,7 @@ def main():
     parser.add_argument('--state', required=True, type=Path)
     subs = parser.add_subparsers(dest='action', required=True)
     subs.add_parser('open')
+    subs.add_parser('invitation', help='explicitly display the secret invitation from creator state, locally only')
     join = subs.add_parser('join')
     join.add_argument('uin')
     send = subs.add_parser('send')
@@ -113,7 +114,8 @@ def main():
                     not isinstance(token, str) or not token):
                 raise ValueError('invalid acquisition response')
             store(path, {'roomId': uin, 'token': token, 'since': 0,
-                         'durabilityUnconfirmed': unconfirmed})
+                         'durabilityUnconfirmed': unconfirmed,
+                         'creator': args.action == 'open'})
         except Exception:
             # Keep unresolved marker (or a saved credential), never silently
             # release the guard after a response that might have committed.
@@ -130,6 +132,24 @@ def main():
     state = json.loads(path.read_text())
     if state.get('acquisition') == 'unresolved':
         raise WriteOutcomeError('unresolved_acquisition')
+    if args.action == 'invitation':
+        # Explicit local access to a first-join capability, not a network check.
+        # Do not infer the creator role from legacy state or the room ID.
+        if (state.get('creator') is not True or
+                not isinstance(state.get('roomId'), str) or
+                not re.fullmatch(r'[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{5}', state['roomId']) or
+                not isinstance(state.get('token'), str) or not state['token'] or
+                type(state.get('durabilityUnconfirmed')) is not bool):
+            raise ValueError('invitation requires valid creator state')
+        unconfirmed = state['durabilityUnconfirmed']
+        print(json.dumps({'secretInvitation': BASE + '/room/' + state['roomId'],
+                          'durabilityUnconfirmed': unconfirmed,
+                          'localOnly': True}), flush=True)
+        print('Secret invitation: share only with the intended peer. '
+              'This local display does not check the server or durability.', file=sys.stderr)
+        if unconfirmed:
+            raise WriteOutcomeError('acquired_unconfirmed')
+        return
     prefix = '/room/' + state['roomId'] + '/msg'
     if args.action == 'send':
         text = args.text_file.read_text()
