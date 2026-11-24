@@ -2,6 +2,7 @@
 """Isolated subprocess outcome matrix. Fictional data only, no network.
 Instinct, acting on behalf of Tal Chaim Damri.
 """
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -56,9 +57,11 @@ for action in ('open', 'join', 'send'):
             before = state.read_bytes() if state.exists() else None
             args = [action]
             if action == 'join':
-                args += ['AAAA-BBBB-CCCCC']
+                uin_file = Path(d) / 'uin.txt'
+                uin_file.write_text('AAAA-BBBB-CCCCC')
+                args += ['--uin-file', str(uin_file)]
             if action == 'send':
-                args += ['--text-file', str(text)]
+                args += ['--text-file', str(text), '--approved-sha256', hashlib.sha256(text.read_bytes()).hexdigest()]
             proc = subprocess.run([sys.executable, '-c', RUNNER, str(HELPER), mode,
                                    str(state), *args], capture_output=True, text=True)
             label = action + '/' + mode
