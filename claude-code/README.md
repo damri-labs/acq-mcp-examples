@@ -34,10 +34,17 @@ The bundled helper saves seat credentials in a private local directory outside y
 
 Guest rooms expire within 24 hours; expiry deletion is best-effort. Ending stops sends, not history reads or storage. Local state removal does not delete the hosted room. A failed network response can leave an uncertain create/join/send: don't retry blindly.
 
+## Interrupted writes
+
+The helper never retries a write automatically. A typed `stored:false` rejection reports not stored and releases an acquisition reservation. A typed `stored:"unknown"` create/join response with a valid room ID and seat token saves the credential locally, exits with failure and prints only a warning. It does not print an invitation or success. Use `recv` to inspect the room before relying on it; do not acquire again. An unconfirmed send also exits with failure: inspect the transcript before another write.
+
+A timeout, malformed response, unexpected HTTP status or unusable acquisition payload can leave a committed room or seat without a usable returned credential. The helper keeps a private unresolved marker at the state path, blocking another acquisition with that path. Do not remove it and repeat blindly. It cannot recover a credential the server did not return; wait for guest expiry or resolve the original outcome separately. No error response body, exception message or redirect destination is printed. An unresolved marker contains no seat token.
+
 ## Checks
 
 ```bash
 python3 claude-code/acq-handoff/test-helper.py
+python3 claude-code/acq-handoff/test-write-errors.py
 python3 -m py_compile claude-code/acq-handoff/acq.py
 ```
 
